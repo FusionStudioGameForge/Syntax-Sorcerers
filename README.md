@@ -28,15 +28,10 @@ A south African based platformer that treats users to an over exaggerated "exper
    ```
 5. Open the local URL provided by Vite in your browser to play!
 
-*(Alternatively, if a production build is provided, you can serve the `dist/` folder.)*
-
 🎮 Controls
 - **Movement:** `Arrow Keys` or `W`, `A`, `S`, `D` to navigate.
 - **Action:** `Spacebar` to jump / interact.
 
-📸 Screenshots
-![Gameplay](screenshot1.png)
-*(Note: Replace `screenshot1.png` with actual gameplay images)*
 
 👥 Team Members
 - **Cameron Naidoo** – Frontend, DevOps
