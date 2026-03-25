@@ -9,9 +9,23 @@
     "preview": "vite preview"
   },
   "devDependencies": {
+    "lite-server": "^2.6.1",
     "vite": "^8.0.1"
   },
   "dependencies": {
     "phaser": "^3.90.0"
-  }
+  },
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FusionStudioGameForge/Syntax-Sorcerers.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FusionStudioGameForge/Syntax-Sorcerers/issues"
+  },
+  "homepage": "https://github.com/FusionStudioGameForge/Syntax-Sorcerers#readme"
 }
