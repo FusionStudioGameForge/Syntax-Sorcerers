@@ -157,6 +157,11 @@ export default class GameScene extends Phaser.Scene {
       this.handleWin();
     });
 
+    // Physics world bounds must match level size — default is only canvas size (800×500),
+    // which would trap the player at x=800 mid-level, right where enemies patrol.
+    // Height 700 lets the player fall past y=600 to trigger the death check.
+    this.physics.world.setBounds(0, 0, 2800, 700);
+
     // Camera
     this.cameras.main.setBounds(0, 0, 2800, 500);
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
