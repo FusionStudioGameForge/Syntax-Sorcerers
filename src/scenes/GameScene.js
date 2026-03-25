@@ -333,6 +333,31 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // Add this method to your GameScene class
+shutdown() {
+  console.log('GameScene shutting down - cleaning up');
+  // Clear all groups and references
+  if (this.platforms) {
+    this.platforms.clear(true, true);
+  }
+  if (this.obstacles) {
+    this.obstacles.clear(true, true);
+  }
+  if (this.coinGroup) {
+    this.coinGroup.clear(true, true);
+  }
+  if (this.enemies && this.enemies.physicsGroup) {
+    this.enemies.physicsGroup.clear(true, true);
+  }
+  this.chunks = [];
+  this.gameOver = false;
+}
+
+// Also add this method to handle scene restart
+restart() {
+  console.log('Restarting game');
+  this.scene.restart();
+}
   // ── HUD helpers ───────────────────────────────────────────────────────────
 
   _updateCoinDisplay() {
