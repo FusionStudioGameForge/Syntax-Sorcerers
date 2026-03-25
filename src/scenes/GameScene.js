@@ -1,5 +1,10 @@
 import Phaser from 'phaser';
-
+// ─── ADD: backend imports ─────────────────────────────────────────────────────
+import { BLOCK_REGISTRY, BLOCK_TYPES, calcDamage } from '../blocks/BlockRegistry.js';
+import { DamageNumbers }                            from '../ui/DamageNumbers.js';
+import { CutsceneManager }                          from '../cutscenes/CutsceneManager.js';
+// ─────────────────────────────────────────────────────────────────────────────
+ 
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
@@ -72,6 +77,37 @@ export default class GameScene extends Phaser.Scene {
     this.maxJumps = 2;
     this.isDead = false;
 
+     // ─── ADD: win state + input lock ────────────────────────────────────────
+    this.hasWon      = false;   // mirrors isDead, prevents double-trigger on finish
+    this._inputLocked = true;   // locked until intro cutscene finishes
+    // ────────────────────────────────────────────────────────────────────────
+ 
+    // ─── ADD: breakable blocks (south-theme debris on platforms) ────────────
+    // Player stomps or punches them — they crack and break using BlockRegistry HP/damage.
+    this.breakableBlocks = this.physics.add.staticGroup();
+    const breakableData = [
+      { x: 640,  y: 386, blockId: BLOCK_TYPES.IRON_SHEET  },
+      { x: 1000, y: 306, blockId: BLOCK_TYPES.WOOD_PLANK  },
+      { x: 1300, y: 336, blockId: BLOCK_TYPES.BRICK       },
+      { x: 1600, y: 286, blockId: BLOCK_TYPES.SCRAP_METAL },
+    ];
+    breakableData.forEach(bd => {
+      const def  = BLOCK_REGISTRY[bd.blockId];
+      const rect = this.add.rectangle(bd.x, bd.y, 32, 32, def.colour).setOrigin(0);
+      this.physics.add.existing(rect, true);
+      rect.setData('blockId', bd.blockId);
+      rect.setData('hp',      def.maxHp);
+      rect.setData('maxHp',   def.maxHp);
+      this.breakableBlocks.add(rect);
+    });
+    // ────────────────────────────────────────────────────────────────────────
+ 
+    // ─── ADD: finish line at world end ──────────────────────────────────────
+    this.finishZone = this.add.rectangle(2570, 420, 24, 60, 0xffd700).setOrigin(0);
+    this.physics.add.existing(this.finishZone, true);
+    // ────────────────────────────────────────────────────────────────────────
+ 
+
     // --- Colliders ---
     this.physics.add.collider(this.player, this.platforms, () => {
       this.jumpCount = 0; // reset jumps on landing
@@ -80,6 +116,22 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.obstacles, () => {
       this.handleDeath();
     });
+
+    // ─── ADD: stomp breakable blocks ────────────────────────────────────────
+    this.physics.add.collider(this.player, this.breakableBlocks, (player, block) => {
+      if (player.body.velocity.y > 60) {   // only on downward stomp
+        this.damageBlock(block, 25, 'blunt');
+      }
+      this.jumpCount = 0;
+    });
+    // ────────────────────────────────────────────────────────────────────────
+ 
+    // ─── ADD: finish line overlap ────────────────────────────────────────────
+    this.physics.add.overlap(this.player, this.finishZone, () => {
+      this.handleWin();
+    });
+    // ────────────────────────────────────────────────────────────────────────
+
 
     // --- Input ---
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -100,6 +152,12 @@ export default class GameScene extends Phaser.Scene {
       this.scene.launch('PauseScene');
     });
 
+    // ─── ADD: punch key — breaks block immediately to player's right ────────
+    this.input.keyboard.on('keydown-F', () => this.doPunch());
+    this.input.keyboard.on('keydown-Z', () => this.doPunch());
+    // ────────────────────────────────────────────────────────────────────────
+ 
+
     // --- Camera ---
     this.cameras.main.setBounds(0, 0, 2600, 500);
     this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
@@ -112,7 +170,20 @@ export default class GameScene extends Phaser.Scene {
     }).setScrollFactor(0);
 
     this.startX = this.player.x;
+    // ─── ADD: damage numbers + cutscene manager + UIScene launch ────────────
+    this.damageNumbers = new DamageNumbers(this);
+    this.cutsceneMan   = new CutsceneManager(this);
+
+    // Launch UIScene as a parallel HUD (runs on top without pausing this scene)
+    this.scene.launch('UIScene');
+ 
+    // Play intro cutscene — unlocks input when done
+    this.cutsceneMan.play('intro_level1', () => {
+      this._inputLocked = false;
+    });
+    // ────────────────────────────────────────────────────────────────────────
   }
+ 
 
   doJump() {
     if (this.isDead) return;
@@ -134,7 +205,73 @@ export default class GameScene extends Phaser.Scene {
       });
     });
   }
-
+// ─── ADD: win handler ────────────────────────────────────────────────────
+  handleWin() {
+    if (this.hasWon || this.isDead) return;
+    this.hasWon = true;
+    this.cutsceneMan.play('level_complete', () => {
+      this.scene.stop('UIScene');
+      this.scene.start('LevelEndScene', {
+        score: Math.floor((this.player.x - this.startX) / 10),
+        win: true
+      });
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+ 
+  // ─── ADD: block damage ───────────────────────────────────────────────────
+  // Reduces a breakable block's HP, changes its tint to show cracks, destroys at 0.
+  damageBlock(blockRect, rawDamage, damageType = 'blunt') {
+    const blockId = blockRect.getData('blockId');
+    const def     = BLOCK_REGISTRY[blockId];
+    if (!def || def.indestructible) return;
+ 
+    const finalDmg = calcDamage(rawDamage, damageType, blockId);
+    if (finalDmg <= 0) return;
+ 
+    const newHp = blockRect.getData('hp') - finalDmg;
+    blockRect.setData('hp', newHp);
+ 
+    // Floating damage number at block centre
+    this.damageNumbers.spawn(blockRect.x + 16, blockRect.y, finalDmg, damageType);
+ 
+    // Tint shift: intact colour → orange crack → red about-to-break
+    const ratio = newHp / blockRect.getData('maxHp');
+    if      (ratio > 0.66) blockRect.setFillStyle(def.colour);
+    else if (ratio > 0.33) blockRect.setFillStyle(0xff9900);
+    else                   blockRect.setFillStyle(0xff3300);
+ 
+    // Tell UIScene to show a toast
+    this.events.emit('block_hit', def.name, finalDmg);
+ 
+    if (newHp <= 0) {
+      this.breakableBlocks.remove(blockRect, true, true);
+      this.cameras.main.shake(100, 0.004);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+ 
+  // ─── ADD: punch action ───────────────────────────────────────────────────
+  // Finds the nearest breakable block within arm's reach to the right of the player.
+  doPunch() {
+    if (this.isDead || this._inputLocked) return;
+    const px = this.player.x;
+    const py = this.player.y;
+    let closest = null;
+    let closestDist = Infinity;
+ 
+    this.breakableBlocks.getChildren().forEach(b => {
+      const dx = (b.x + 16) - px;
+      const dy = Math.abs((b.y + 16) - py);
+      if (dx > 0 && dx < 64 && dy < 32 && dx < closestDist) {
+        closestDist = dx;
+        closest = b;
+      }
+    });
+ 
+    if (closest) this.damageBlock(closest, 20, 'blunt');
+  }
+  // ─────────────────────────────────────────────────────────────────────────
   update() {
     if (this.isDead) return;
 
@@ -161,5 +298,8 @@ export default class GameScene extends Phaser.Scene {
     // Score
     const dist = Math.max(0, Math.floor((this.player.x - this.startX) / 10));
     this.scoreText.setText('Distance: ' + dist + 'm');
+
+     // ADD: tick damage number animations
+    this.damageNumbers.update(this.game.loop.delta);
   }
 }
