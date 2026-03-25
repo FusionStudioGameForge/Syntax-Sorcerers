@@ -1,75 +1,64 @@
-//  Wraps the Phaser sprite + all player-specific logic.
-//  GameScene creates one instance and calls update() each frame.
-
+import Phaser from 'phaser';
 import { PLAYER_SPEED, JUMP_FORCE, EXTRA_GRAVITY, MAX_HEALTH } from '../constants.js';
 
-export class player {
-  /**
-   * @param {Phaser.Scene} scene  - the scene that owns this player
-   * @param {number}       x, y  - spawn position
-   */
+export class Player {
   constructor(scene, x, y) {
     this.scene = scene;
-    this.autoRun = false;
-
-    // Phaser sprite (arcade physics)
     this.sprite = scene.physics.add.sprite(x, y, 'player');
     this.sprite.setCollideWorldBounds(true);
-    this.sprite.setBounce(0.1);
-    // adds extra gravity on top of the worlds existing gravity so jumps feel snappy
+    this.sprite.setBounce(0.05);
     this.sprite.setGravityY(EXTRA_GRAVITY - scene.physics.world.gravity.y);
 
-    // the camera/screen follows the player, keeping them centered
-    this.cameras.main.startFollow(player.sprite);
+    this.maxHealth = MAX_HEALTH;
+    this.health = MAX_HEALTH;
+    this.score = 0;
+    this.alive = true;
+    this.invincible = false;
+    this.jumpCount = 0;
+    this.maxJumps = 2;
 
-    // State 
-    this.health     = MAX_HEALTH;
-    this.score      = 0;
-    this.invincible = false;  // true for ~1 s after taking a hit
-    this.alive      = true;
+    scene.events.emit('healthChanged', this.health);
+    scene.events.emit('scoreChanged', this.score);
   }
 
-  // Called every frame from GameScene.update() 
   update(keys) {
     if (!this.alive) return;
 
-    const onGround = this.sprite.body.blocked.down;
-
-
-    // activates the auto-run on space press 
-    if (Phaser.Input.Keyboard.JustDown(keys.space)) {
-        this.autoRun = true;
+    if (this.sprite.body.blocked.down) {
+      this.jumpCount = 0;
     }
 
-    // Horizontal movement 
-    if (this.autoRun) {
-      this.sprite.setVelocityX(-PLAYER_SPEED);
-      this.sprite.setFlipX(false);           // face right when auto-running
-    } else if (keys.left.isDown || keys.a.isDown) {
-      this.sprite.setVelocityX(-PLAYER_SPEED);
-      this.sprite.setFlipX(true);
-    } else {
-      // friction to gradually slow the player to a stop
-      this.sprite.setVelocityX(this.sprite.body.velocity.x * 0.8);
-    }
+    let vx = 0;
+    if (keys.left.isDown || keys.a.isDown) vx -= PLAYER_SPEED;
+    if (keys.right.isDown || keys.d.isDown) vx += PLAYER_SPEED;
+    this.sprite.setVelocityX(vx);
 
-    // Jump 
-    if ((keys.up.isDown || keys.w.isDown || keys.jump.isDown) && onGround) {
-      this.sprite.setVelocityY(JUMP_FORCE);
+    if (Phaser.Input.Keyboard.JustDown(keys.up) || Phaser.Input.Keyboard.JustDown(keys.w) || Phaser.Input.Keyboard.JustDown(keys.space)) {
+      this.tryJump();
     }
   }
 
-  // Collect a coin 
+  tryJump() {
+    if (!this.alive) return;
+    if (this.jumpCount < this.maxJumps) {
+      this.sprite.setVelocityY(JUMP_FORCE);
+      this.jumpCount += 1;
+    }
+  }
+
+  bounceFromStomp() {
+    this.sprite.setVelocityY(JUMP_FORCE * 0.75);
+  }
+
   addScore(amount) {
     this.score += amount;
     this.scene.events.emit('scoreChanged', this.score);
   }
 
-  // Take a hit — returns true if player just died
-  takeDamage(enemyX) {
-    if (this.invincible || !this.alive) return false;
+  takeDamage(sourceX) {
+    if (!this.alive || this.invincible) return false;
 
-    this.health--;
+    this.health = Math.max(0, this.health - 1);
     this.scene.events.emit('healthChanged', this.health);
 
     if (this.health <= 0) {
@@ -77,36 +66,42 @@ export class player {
       return true;
     }
 
-    // Brief invincibility window after a hit
     this.invincible = true;
     this.scene.tweens.add({
-      targets:  this.sprite,
-      alpha:    0.2,
-      yoyo:     true,
-      repeat:   5,
-      duration: 150,
+      targets: this.sprite,
+      alpha: 0.2,
+      yoyo: true,
+      repeat: 5,
+      duration: 90,
       onComplete: () => {
         this.sprite.setAlpha(1);
         this.invincible = false;
       },
     });
 
-    // Knockback
-    const dir = this.sprite.x < enemyX ? -1 : 1;
-    this.sprite.setVelocity(dir * 300, -200);
+    const knockDir = this.sprite.x < sourceX ? -1 : 1;
+    this.sprite.setVelocity(knockDir * 260, -220);
     return false;
   }
 
-  // Kill immediately (pit, etc.) 
   die() {
     if (!this.alive) return;
     this.alive = false;
-    this.sprite.setTint(0xff0000);
-    this.sprite.setVelocityY(-300);
+    this.sprite.setTint(0xff4444);
+    this.sprite.setVelocity(0, -240);
   }
 
-  // Convenience getters 
-  get x()           { return this.sprite.x; }
-  get y()           { return this.sprite.y; }
-  get velocityY()   { return this.sprite.body.velocity.y; }
+  get x() {
+    return this.sprite.x;
+  }
+
+  get y() {
+    return this.sprite.y;
+  }
+
+  get velocityY() {
+    return this.sprite.body.velocity.y;
+  }
 }
+
+export class player extends Player {}
