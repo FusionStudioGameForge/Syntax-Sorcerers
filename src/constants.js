@@ -6,7 +6,7 @@ export const WORLD_W       = 3200;
 export const WORLD_H       = 600;
 
 // ── Player ───────────────────────────────────────────────────
-export const PLAYER_SPEED  = 220;   // horizontal run speed (px/s)
+export const PLAYER_SPEED  = 500;   // horizontal run speed (px/s)
 export const JUMP_FORCE    = -480;  // jump velocity  (negative = up)
 export const EXTRA_GRAVITY = 600;   // added on top of world gravity
 export const MAX_HEALTH    = 3;     // total hearts
