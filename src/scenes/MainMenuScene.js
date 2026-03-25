@@ -21,7 +21,10 @@ export default class MainMenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     playBtn.on('pointerover', () => playBtn.setFill('#f5a623'));
-    playBtn.on('pointerout',  () => playBtn.setFill('#ffffff'));
-    playBtn.on('pointerdown', () => this.scene.start('GameScene'));
+    playBtn.on('pointerout', () => playBtn.setFill('#ffffff'));
+
+    playBtn.on('pointerdown', () => {
+      this.scene.start('GameScene');
+    });
   }
 }
