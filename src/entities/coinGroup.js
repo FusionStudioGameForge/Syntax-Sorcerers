@@ -41,10 +41,9 @@ export class CoinGroup {
     }
 
     //  PLACEMENT STRATEGIES
-
     /**
-     * Smart: pick random platform tiles and float a coin above them.
-     * Guarantees every coin is reachable.
+     * picks random platform tiles and float a coin above them. 
+     * Guarantees that every coin is reachable.
      */
     _spawnOnPlatforms(count, platforms) {
         const tiles = platforms.getChildren();
@@ -86,5 +85,11 @@ export class CoinGroup {
 
     getRemainingCount() {
         return this.physicsGroup.countActive(true);
+    }
+
+    getTotalCount() {
+        // getLength() returns the total number of coins created, 
+        // including the ones you've already collected and disabled.
+        return this.physicsGroup.getLength();
     }
 }

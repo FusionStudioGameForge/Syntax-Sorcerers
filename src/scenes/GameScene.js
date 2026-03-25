@@ -10,7 +10,6 @@ export default class GameScene extends Phaser.Scene {
   }
 
   preload() {
-    // Create runtime textures for player, enemy, coin, platform
     this.createRuntimeTextures();
   }
 
@@ -45,27 +44,27 @@ export default class GameScene extends Phaser.Scene {
 
     // Joburg skyline
     const buildings = [
-      { x: 100, y: 300, w: 60, h: 160 },
-      { x: 200, y: 260, w: 80, h: 200 },
-      { x: 320, y: 220, w: 50, h: 240 },
-      { x: 420, y: 280, w: 90, h: 180 },
-      { x: 560, y: 240, w: 70, h: 220 },
-      { x: 680, y: 200, w: 55, h: 260 },
-      { x: 780, y: 270, w: 100, h: 190 },
-      { x: 930, y: 230, w: 65, h: 230 },
-      { x: 1050, y: 250, w: 80, h: 210 },
-      { x: 1180, y: 210, w: 60, h: 250 },
+      { x: 100,  y: 300, w: 60,  h: 160 },
+      { x: 200,  y: 260, w: 80,  h: 200 },
+      { x: 320,  y: 220, w: 50,  h: 240 },
+      { x: 420,  y: 280, w: 90,  h: 180 },
+      { x: 560,  y: 240, w: 70,  h: 220 },
+      { x: 680,  y: 200, w: 55,  h: 260 },
+      { x: 780,  y: 270, w: 100, h: 190 },
+      { x: 930,  y: 230, w: 65,  h: 230 },
+      { x: 1050, y: 250, w: 80,  h: 210 },
+      { x: 1180, y: 210, w: 60,  h: 250 },
     ];
     buildings.forEach((b) => {
       this.add.rectangle(b.x, b.y, b.w, b.h, 0x16213e).setOrigin(0);
     });
 
-    // Platforms
+    // ── Platforms ──────────────────────────────────────────────
     const platformData = [
-      { x: 0, y: 460, w: 400, h: 20 },
-      { x: 450, y: 420, w: 200, h: 20 },
-      { x: 700, y: 380, w: 180, h: 20 },
-      { x: 930, y: 340, w: 220, h: 20 },
+      { x: 0,    y: 460, w: 400, h: 20 },
+      { x: 450,  y: 420, w: 200, h: 20 },
+      { x: 700,  y: 380, w: 180, h: 20 },
+      { x: 930,  y: 340, w: 220, h: 20 },
       { x: 1200, y: 370, w: 200, h: 20 },
       { x: 1460, y: 320, w: 250, h: 20 },
       { x: 1760, y: 360, w: 200, h: 20 },
@@ -78,10 +77,10 @@ export default class GameScene extends Phaser.Scene {
       this.platforms.add(plat);
     });
 
-    // Obstacles (instant death on touch)
+    // ── Obstacles ──────────────────────────────────────────────
     const obstacleData = [
-      { x: 600, y: 400, w: 20, h: 40 },
-      { x: 850, y: 360, w: 20, h: 40 },
+      { x: 600,  y: 400, w: 20, h: 40 },
+      { x: 850,  y: 360, w: 20, h: 40 },
       { x: 1100, y: 320, w: 20, h: 40 },
     ];
     this.obstacles = this.physics.add.staticGroup();
@@ -91,45 +90,48 @@ export default class GameScene extends Phaser.Scene {
       this.obstacles.add(obs);
     });
 
-    // Player
+    // ── Player ─────────────────────────────────────────────────
     this.player = new Player(this, 80, 400);
 
-    // Enemies
+    // ── Enemies ────────────────────────────────────────────────
     const enemySpecs = [
-      { x: 520, y: 380, minX: 480, maxX: 650 },
-      { x: 800, y: 340, minX: 750, maxX: 900 },
+      { x: 520,  y: 380, minX: 480,  maxX: 650  },
+      { x: 800,  y: 340, minX: 750,  maxX: 900  },
       { x: 1280, y: 300, minX: 1200, maxX: 1400 },
     ];
     this.enemies = new EnemyGroup(this, enemySpecs);
 
-    // Coins
-    const coinPositions = [
-      [180, 420],
-      [300, 380],
-      [520, 360],
-      [650, 320],
-      [860, 300],
-      [1120, 260],
-      [1350, 290],
-      [1650, 240],
-      [1900, 400],
-      [2200, 420],
-    ];
-    this.coins = new CoinGroup(this, coinPositions);
+    // ── Coins (dynamic — spawned randomly on top of platforms) ─
+    //
+    //    Smart mode:  pass `platforms` and coins land above real tiles
+    //    count:       how many coins to place (default 25)
+    //    minYOffset / maxYOffset: how far above each tile to float
+    //
+    //   To switch to pure-random scatter instead, replace with:
+    //     this.coins = new CoinGroup(this, { count: 20 });
+    //
+    //   To use fixed positions (old behaviour), replace with:
+    //     this.coins = new CoinGroup(this, { positions: [[x,y], ...] });
+    //
+    this.coins = new CoinGroup(this, {
+      count:     20,          // number of coins to spawn
+      //platforms: this.platforms,  // place coins above these tiles
+    });
 
-    // Finish zone
-    this.finishZone = this.add.rectangle(2550, 420, 40, 60, 0xffd700).setOrigin(0);
+    // ── Finish zone 
+    // x: 2550, y: 0 (top), width: 40, height: 700 (full world height)
+    this.finishZone = this.add.rectangle(2550, 0, 40, 700, 0xffd700).setOrigin(0);
     this.physics.add.existing(this.finishZone, true);
 
-    // Setup input
+    // ── Input ──────────────────────────────────────────────────
     this.keys = {
-      left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
+      left:  this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
       right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
-      up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
+      up:    this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
       space: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
-      a: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      d: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      w: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      a:     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      d:     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+      w:     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
     };
 
     this.input.keyboard.on('keydown-ESC', () => {
@@ -137,17 +139,25 @@ export default class GameScene extends Phaser.Scene {
       this.scene.launch('PauseScene');
     });
 
-    // Colliders
+    // ── Colliders & overlaps ───────────────────────────────────
     this.physics.add.collider(this.player.sprite, this.platforms);
     this.physics.add.collider(this.enemies.physicsGroup, this.platforms);
 
-    this.physics.add.overlap(this.player.sprite, this.coins.physicsGroup, (playerSprite, coin) => {
-      this.coins.collectCoin(playerSprite, coin, this.player, COIN_SCORE);
-    });
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.coins.physicsGroup,
+      (playerSprite, coin) => {
+        this.coins.collectCoin(playerSprite, coin, this.player, COIN_SCORE);
+      }
+    );
 
-    this.physics.add.overlap(this.player.sprite, this.enemies.physicsGroup, (playerSprite, enemy) => {
-      this.enemies.handlePlayerCollision(this.player, enemy, () => this.handleDeath());
-    });
+    this.physics.add.overlap(
+      this.player.sprite,
+      this.enemies.physicsGroup,
+      (playerSprite, enemy) => {
+        this.enemies.handlePlayerCollision(this.player, enemy, () => this.handleDeath());
+      }
+    );
 
     this.physics.add.overlap(this.player.sprite, this.obstacles, () => {
       this.handleDeath();
@@ -157,37 +167,38 @@ export default class GameScene extends Phaser.Scene {
       this.handleWin();
     });
 
-    // Physics world bounds must match level size — default is only canvas size (800×500),
-    // which would trap the player at x=800 mid-level, right where enemies patrol.
-    // Height 700 lets the player fall past y=600 to trigger the death check.
+    // ── World & camera bounds ──────────────────────────────────
     this.physics.world.setBounds(0, 0, 2800, 700);
-
-    // Camera
     this.cameras.main.setBounds(0, 0, 2800, 500);
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
 
-    // HUD
+    // ── HUD ───────────────────────────────────────────────────
     this.scoreDisplay = this.add.text(16, 16, 'Score: 0', {
-      fontSize: '18px',
-      fill: '#ffffff',
-      fontFamily: 'monospace',
+      fontSize: '18px', fill: '#ffffff', fontFamily: 'monospace',
     }).setScrollFactor(0);
 
     this.healthDisplay = this.add.text(16, 40, 'Health: 3', {
-      fontSize: '18px',
-      fill: '#ffffff',
-      fontFamily: 'monospace',
+      fontSize: '18px', fill: '#ffffff', fontFamily: 'monospace',
+    }).setScrollFactor(0);
+
+    // Coin counter — useful now that the count is dynamic
+    this.coinDisplay = this.add.text(16, 64, `Coins: 0 / ${this.coins.getRemainingCount()}`, {
+      fontSize: '18px', fill: '#ffd700', fontFamily: 'monospace',
     }).setScrollFactor(0);
 
     this.events.on('scoreChanged', (score) => {
       this.scoreDisplay.setText('Score: ' + score);
+      // Recalculate coins collected = total spawned - remaining
+      const total     = this.coins.getTotalCount();
+      const remaining = this.coins.getRemainingCount();
+      this.coinDisplay.setText(`Coins: ${total - remaining} / ${total}`);
     });
 
     this.events.on('healthChanged', (health) => {
       this.healthDisplay.setText('Health: ' + health);
     });
 
-    this.startX = this.player.x;
+    this.startX   = this.player.x;
     this.gameOver = false;
   }
 
@@ -199,9 +210,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.time.delayedCall(1000, () => {
       this.scene.start('LevelEndScene', {
-        score: this.player.score,
+        score:    this.player.score,
         distance: Math.max(0, Math.floor((this.player.x - this.startX) / 10)),
-        win: false,
+        win:      false,
       });
     });
   }
@@ -212,9 +223,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.time.delayedCall(500, () => {
       this.scene.start('LevelEndScene', {
-        score: this.player.score,
+        score:    this.player.score,
         distance: Math.max(0, Math.floor((this.player.x - this.startX) / 10)),
-        win: true,
+        win:      true,
       });
     });
   }
@@ -225,7 +236,6 @@ export default class GameScene extends Phaser.Scene {
     this.player.update(this.keys);
     this.enemies.update();
 
-    // Death by falling
     if (this.player.y > 600) {
       this.handleDeath();
     }

@@ -103,5 +103,3 @@ export class Player {
     return this.sprite.body.velocity.y;
   }
 }
-
-export class player extends Player {}
